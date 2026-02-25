@@ -1,0 +1,22 @@
+# Streamlit for web interface
+streamlit>=1.28.0
+
+# LangChain for RAG implementation
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-google-genai>=0.0.6
+langchain-core>=0.1.0
+langchain-huggingface>=0.0.1
+
+# Document processing
+pypdf>=4.0.0
+
+# Vector store and embeddings
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.0
+
+# Google AI
+google-generativeai>=0.3.0
+
+# Environment management
+python-dotenv>=1.0.0
