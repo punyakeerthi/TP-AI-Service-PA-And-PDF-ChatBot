@@ -217,28 +217,31 @@ pip install python-dotenv>=1.0.0           # Environment variables
 
 ### **Requirements.txt File:**
 ```text
-# AI Agent Dependencies
-langchain>=0.1.0
+# Core AI Dependencies
 langchain-core>=0.1.0  
 langchain-community>=0.0.20
-langchain-experimental>=0.0.50
-langchain-google-genai>=0.0.6
+langchain-google-genai>=0.0.6  # Google Gemini
 
-# Tools
-google-search-results>=2.4.1
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-matplotlib>=3.7.0
-pandas>=2.0.0
+# Tools and Utilities
+google-search-results>=2.4.1   # SerpAPI for web search
+requests>=2.31.0               # HTTP requests
+beautifulsoup4>=4.12.0         # Web scraping
+matplotlib>=3.7.0              # Data visualization
+pandas>=2.0.0                  # Data analysis
 
-# Utilities
-streamlit>=1.28.0
-python-dotenv>=1.0.0
+# Environment and Interface
+python-dotenv>=1.0.0           # Environment variables
+streamlit>=1.28.0              # Optional: Web interface
+
+# Research Tools (Optional)
+arxiv>=1.4.0                   # Academic paper search
 ```
 
 ---
 
 ## 🔥 **LangChain Agent Examples**
+
+> **⚠️ IMPORTANT NOTE**: These examples use a **simplified, working approach** that doesn't rely on deprecated LangChain APIs. They use custom `BasicTool` classes and simple agent implementations that are reliable and compatible with current LangChain versions.
 
 ### **Example 1: Simple Web Search Agent**
 
@@ -333,8 +336,14 @@ if __name__ == "__main__":
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from langchain.tools import Tool
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+class BasicTool:
+    """Simple tool implementation"""
+    def __init__(self, name, func, description):
+        self.name = name
+        self.func = func
+        self.description = description
 
 class SimpleDataAgent:
     """Simple data analysis agent implementation"""
@@ -400,17 +409,17 @@ Data types:
     
     # Create tool objects
     tools = [
-        Tool(
+        BasicTool(
             name="LoadData",
             func=load_csv_data,
             description="Load CSV data and show basic information"
         ),
-        Tool(
+        BasicTool(
             name="AnalyzeData", 
             func=analyze_data,
             description="Perform statistical analysis (descriptive, correlation, etc.)"
         ),
-        Tool(
+        BasicTool(
             name="CreateChart",
             func=create_visualization,
             description="Create charts and visualizations (bar, line, scatter, etc.)"
@@ -459,8 +468,48 @@ import smtplib
 import requests
 from email.mime.text import MIMEText
 from datetime import datetime
-from langchain.agents import Tool, initialize_agent, AgentType
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+class BasicTool:
+    """Simple tool implementation"""
+    def __init__(self, name, func, description):
+        self.name = name
+        self.func = func
+        self.description = description
+
+class SimpleBusinessAgent:
+    """Simple business agent implementation"""
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = {tool.name: tool for tool in tools}
+    
+    def invoke(self, inputs):
+        query = inputs["input"].lower()
+        
+        if "email" in query:
+            return self._use_tool("SendEmail", query)
+        elif "weather" in query:
+            return self._use_tool("GetWeather", query)
+        elif "roi" in query or "revenue" in query or "metrics" in query:
+            return self._use_tool("CalculateMetrics", query)
+        elif "meeting" in query or "schedule" in query:
+            return self._use_tool("ScheduleMeeting", query)
+        else:
+            try:
+                response = self.llm.invoke(inputs["input"])
+                return {"output": response.content if hasattr(response, 'content') else str(response)}
+            except Exception as e:
+                return {"output": f"LLM failed: {str(e)}"}
+    
+    def _use_tool(self, tool_name, query):
+        if tool_name in self.tools:
+            try:
+                result = self.tools[tool_name].func(query)
+                return {"output": result}
+            except Exception as e:
+                return {"output": f"Tool {tool_name} failed: {str(e)}"}
+        else:
+            return {"output": f"Tool {tool_name} not available"}
 
 class BusinessTools:
     """Collection of business operation tools"""
@@ -529,22 +578,22 @@ def create_business_agent():
     business_tools = BusinessTools()
     
     tools = [
-        Tool(
+        BasicTool(
             name="SendEmail",
             func=business_tools.send_email,
             description="Send email. Format: 'recipient@email.com|Subject|Message'"
         ),
-        Tool(
+        BasicTool(
             name="GetWeather",
             func=business_tools.get_weather,
             description="Get current weather for any city"
         ),
-        Tool(
+        BasicTool(
             name="CalculateMetrics",
             func=business_tools.calculate_business_metrics,
             description="Calculate business metrics (ROI, revenue, growth, etc.)"
         ),
-        Tool(
+        BasicTool(
             name="ScheduleMeeting",
             func=business_tools.schedule_meeting,
             description="Schedule meetings with participants and agenda"
@@ -557,15 +606,7 @@ def create_business_agent():
         api_key=os.getenv("GOOGLE_API_KEY")
     )
     
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True,
-        max_iterations=5  # Prevent infinite loops
-    )
-    
-    return agent
+    return SimpleBusinessAgent(llm, tools)
 
 # Usage Example
 if __name__ == "__main__":
@@ -592,49 +633,67 @@ if __name__ == "__main__":
 
 #### **1. Tools Definition**
 ```python
-# Tool structure
-Tool(
-    name="ToolName",           # Unique identifier
-    func=my_function,          # Function to execute  
-    description="What it does" # LLM uses this to decide when to use tool
-)
+# Tool structure using BasicTool
+class BasicTool:
+    def __init__(self, name, func, description):
+        self.name = name           # Unique identifier
+        self.func = func          # Function to execute  
+        self.description = description # LLM uses this to decide when to use tool
 
 # Good description example
-Tool(
+BasicTool(
     name="WebSearch",
     func=search_function,
     description="Search the internet for current real-time information about any topic, news, or events"
 )
 
 # Bad description example  
-Tool(
+BasicTool(
     name="Search",
     func=search_function,
     description="Search stuff"  # Too vague!
 )
 ```
 
-#### **2. Agent Types Explained**
+#### **2. Simple Agent Implementation**
 
 ```python
-# ZERO_SHOT_REACT_DESCRIPTION
-# - Best for: General purpose tasks
-# - How it works: Think → Action → Observation → Repeat
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=True
-)
-
-# PLAN_AND_EXECUTE  
-# - Best for: Complex multi-step tasks
-# - How it works: Create plan → Execute step by step
-from langchain_experimental.plan_and_execute import PlanAndExecute, load_agent_executor, load_chat_planner
-
-planner = load_chat_planner(llm)
-executor = load_agent_executor(llm, tools, verbose=True)
-agent = PlanAndExecute(planner=planner, executor=executor, verbose=True)
+# Simple, reliable agent pattern
+class SimpleAgent:
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = {tool.name: tool for tool in tools}
+    
+    def invoke(self, inputs):
+        query = inputs["input"].lower()
+        
+        # Smart keyword detection
+        if self._needs_tool(query):
+            return self._use_appropriate_tool(query)
+        else:
+            # Use LLM for general questions
+            try:
+                response = self.llm.invoke(inputs["input"])
+                return {"output": response.content}
+            except Exception as e:
+                return {"output": f"Error: {str(e)}"}
+    
+    def _needs_tool(self, query):
+        # Custom logic to determine if tools are needed
+        keywords = ["search", "calculate", "weather", "news"]
+        return any(keyword in query for keyword in keywords)
+    
+    def _use_appropriate_tool(self, query):
+        # Logic to select and use the right tool
+        for tool_name, tool in self.tools.items():
+            if self._tool_matches_query(tool_name, query):
+                try:
+                    result = tool.func(query)
+                    return {"output": result}
+                except Exception as e:
+                    return {"output": f"Tool failed: {str(e)}"}
+        
+        return {"output": "No suitable tool found"}
 ```
 
 #### **3. Error Handling & Retries**
@@ -674,12 +733,57 @@ result = robust_agent_call(agent, "What's the weather in Tokyo?")
 # 🔬 Advanced Research Agent
 # =============================
 
-from langchain.agents import Tool
-from langchain.memory import ConversationBufferMemory
-from langchain.agents import AgentType, initialize_agent
+from langchain_google_genai import ChatGoogleGenerativeAI
 import arxiv
 import requests
 from bs4 import BeautifulSoup
+
+class BasicTool:
+    """Simple tool implementation"""
+    def __init__(self, name, func, description):
+        self.name = name
+        self.func = func
+        self.description = description
+
+class SimpleResearchAgent:
+    """Simple research agent implementation"""
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = {tool.name: tool for tool in tools}
+        self.conversation_history = []
+    
+    def invoke(self, inputs):
+        query = inputs["input"].lower()
+        self.conversation_history.append(f"User: {inputs['input']}")
+        
+        if "paper" in query or "arxiv" in query or "research" in query:
+            result = self._use_tool("SearchPapers", inputs["input"])
+        elif "webpage" in query or "url" in query or "summarize" in query:
+            result = self._use_tool("SummarizeWebpage", inputs["input"])
+        elif "fact-check" in query or "verify" in query:
+            result = self._use_tool("FactCheck", inputs["input"])
+        else:
+            try:
+                # Include conversation context
+                context = "\n".join(self.conversation_history[-5:])  # Last 5 exchanges
+                prompt = f"Context: {context}\n\nCurrent question: {inputs['input']}"
+                response = self.llm.invoke(prompt)
+                result = {"output": response.content if hasattr(response, 'content') else str(response)}
+            except Exception as e:
+                result = {"output": f"LLM failed: {str(e)}"}
+        
+        self.conversation_history.append(f"Assistant: {result['output']}")
+        return result
+    
+    def _use_tool(self, tool_name, query):
+        if tool_name in self.tools:
+            try:
+                result = self.tools[tool_name].func(query)
+                return {"output": result}
+            except Exception as e:
+                return {"output": f"Tool {tool_name} failed: {str(e)}"}
+        else:
+            return {"output": f"Tool {tool_name} not available"}
 
 class ResearchTools:
     """Advanced research capabilities"""
@@ -741,28 +845,22 @@ def create_research_agent():
     research_tools = ResearchTools()
     
     tools = [
-        Tool(
+        BasicTool(
             name="SearchPapers",
             func=research_tools.search_academic_papers,
             description="Search academic papers and research publications on arXiv"
         ),
-        Tool(
+        BasicTool(
             name="SummarizeWebpage", 
             func=research_tools.summarize_webpage,
             description="Extract and summarize content from any webpage URL"
         ),
-        Tool(
+        BasicTool(
             name="FactCheck",
             func=research_tools.fact_check_claim,
             description="Help fact-check claims and statements"
         )
     ]
-    
-    # Add conversation memory
-    memory = ConversationBufferMemory(
-        memory_key="chat_history",
-        return_messages=True
-    )
     
     llm = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
@@ -770,16 +868,7 @@ def create_research_agent():
         api_key=os.getenv("GOOGLE_API_KEY")
     )
     
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
-        memory=memory,
-        verbose=True,
-        max_iterations=6
-    )
-    
-    return agent
+    return SimpleResearchAgent(llm, tools)
 
 # Usage Example
 if __name__ == "__main__":
@@ -804,6 +893,57 @@ if __name__ == "__main__":
 # =============================
 # 🤵 Personal Assistant Agent
 # =============================
+
+from datetime import datetime
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+class BasicTool:
+    """Simple tool implementation"""
+    def __init__(self, name, func, description):
+        self.name = name
+        self.func = func
+        self.description = description
+
+class SimplePersonalAgent:
+    """Simple personal assistant agent implementation"""
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = {tool.name: tool for tool in tools}
+    
+    def invoke(self, inputs):
+        query = inputs["input"].lower()
+        
+        if "add" in query and "task" in query:
+            return self._use_tool("AddTask", inputs["input"])
+        elif "list" in query and "task" in query:
+            filter_type = "all"
+            if "pending" in query:
+                filter_type = "pending"
+            elif "completed" in query:
+                filter_type = "completed"
+            return self._use_tool("ListTasks", filter_type)
+        elif "complete" in query and "task" in query:
+            return self._use_tool("CompleteTask", inputs["input"])
+        elif "reminder" in query:
+            return self._use_tool("SetReminder", inputs["input"])
+        elif "summary" in query:
+            return self._use_tool("DailySummary", "")
+        else:
+            try:
+                response = self.llm.invoke(inputs["input"])
+                return {"output": response.content if hasattr(response, 'content') else str(response)}
+            except Exception as e:
+                return {"output": f"LLM failed: {str(e)}"}
+    
+    def _use_tool(self, tool_name, query):
+        if tool_name in self.tools:
+            try:
+                result = self.tools[tool_name].func(query)
+                return {"output": result}
+            except Exception as e:
+                return {"output": f"Tool {tool_name} failed: {str(e)}"}
+        else:
+            return {"output": f"Tool {tool_name} not available"}
 
 class PersonalAssistantTools:
     """Tools for personal task management"""
@@ -886,27 +1026,27 @@ def create_personal_assistant():
     assistant_tools = PersonalAssistantTools()
     
     tools = [
-        Tool(
+        BasicTool(
             name="AddTask",
             func=assistant_tools.add_task,
             description="Add a new task or todo item to the task list"
         ),
-        Tool(
+        BasicTool(
             name="ListTasks", 
             func=assistant_tools.list_tasks,
             description="List tasks. Options: 'all', 'pending', 'completed'"
         ),
-        Tool(
+        BasicTool(
             name="CompleteTask",
             func=assistant_tools.complete_task,
             description="Mark a task as completed using its ID number"
         ),
-        Tool(
+        BasicTool(
             name="SetReminder",
             func=assistant_tools.set_reminder,
             description="Set a reminder for future reference"
         ),
-        Tool(
+        BasicTool(
             name="DailySummary",
             func=assistant_tools.get_daily_summary,
             description="Get a daily productivity summary and overview"
@@ -919,14 +1059,7 @@ def create_personal_assistant():
         api_key=os.getenv("GOOGLE_API_KEY")
     )
     
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True
-    )
-    
-    return agent
+    return SimplePersonalAgent(llm, tools)
 
 # Usage Example
 if __name__ == "__main__":
@@ -955,14 +1088,14 @@ if __name__ == "__main__":
 ### **1. Tool Design Principles**
 ```python
 # ✅ GOOD: Clear, specific tool descriptions
-Tool(
+BasicTool(
     name="SendEmail",
     func=send_email_function,
     description="Send email to a recipient. Requires: recipient email, subject line, and message body. Format: 'email|subject|body'"
 )
 
 # ❌ BAD: Vague descriptions  
-Tool(
+BasicTool(
     name="Email",
     func=send_email_function, 
     description="Email tool"
@@ -997,14 +1130,32 @@ def robust_tool_function(input_data: str) -> str:
 
 ### **3. Memory Management**
 ```python
-from langchain.memory import ConversationBufferWindowMemory
-
-# Use windowed memory for long conversations
-memory = ConversationBufferWindowMemory(
-    memory_key="chat_history",
-    k=10,  # Keep last 10 exchanges
-    return_messages=True
-)
+# Simple conversation history implementation
+class ConversationalAgent:
+    def __init__(self, llm, tools, max_history=10):
+        self.llm = llm
+        self.tools = tools
+        self.conversation_history = []
+        self.max_history = max_history
+    
+    def invoke(self, inputs):
+        # Add to history
+        self.conversation_history.append(f"User: {inputs['input']}")
+        
+        # Keep only recent history
+        if len(self.conversation_history) > self.max_history:
+            self.conversation_history = self.conversation_history[-self.max_history:]
+        
+        # Include context in LLM calls
+        context = "\n".join(self.conversation_history[-5:])  # Last 5 exchanges
+        
+        # Your agent logic here with context
+        result = self._process_with_context(context, inputs["input"])
+        
+        # Add response to history
+        self.conversation_history.append(f"Assistant: {result['output']}")
+        
+        return result
 ```
 
 ### **4. Performance Optimization**
@@ -1017,15 +1168,24 @@ def expensive_api_call(query: str) -> str:
     """Cache API results to avoid duplicate calls"""
     return make_api_request(query)
 
-# Set reasonable limits
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    max_iterations=5,  # Prevent infinite loops
-    max_execution_time=60,  # Timeout after 1 minute
-    verbose=True
-)
+# Set reasonable limits in your agent class
+class SimpleAgent:
+    def __init__(self, llm, tools, max_retries=3, timeout=60):
+        self.llm = llm
+        self.tools = tools
+        self.max_retries = max_retries
+        self.timeout = timeout
+    
+    def invoke(self, inputs):
+        # Add timeout and retry logic
+        for attempt in range(self.max_retries):
+            try:
+                # Your agent logic here with timeout
+                return self._execute_with_timeout(inputs)
+            except Exception as e:
+                if attempt == self.max_retries - 1:
+                    return {"output": f"Failed after {self.max_retries} attempts: {str(e)}"}
+                time.sleep(2 ** attempt)  # Exponential backoff
 ```
 
 ---
@@ -1034,26 +1194,12 @@ agent = initialize_agent(
 
 ### **Common Issues & Solutions**
 
-#### **1. Agent Gets Stuck in Loops**
+#### **1. Tool-Related Issues**
 ```python
-# Problem: Agent keeps trying same failed action
-# Solution: Add max_iterations and better error handling
+# Problem: Tools not being called or working properly
+# Solution: Improve tool descriptions and add keyword detection
 
-agent = initialize_agent(
-    tools=tools,
-    llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    max_iterations=3,  # Limit iterations
-    early_stopping_method="generate"  # Stop early if needed
-)
-```
-
-#### **2. Tools Not Being Called**
-```python
-# Problem: LLM not understanding when to use tools
-# Solution: Improve tool descriptions and examples
-
-Tool(
+BasicTool(
     name="Calculator",
     func=calculate,
     description="""
@@ -1062,21 +1208,12 @@ Tool(
     Examples: "calculate 15 * 23", "solve 2x + 5 = 15", "find square root of 144"
     """
 )
-```
 
-#### **3. Memory Issues with Long Conversations**
-```python
-# Problem: Context getting too long
-# Solution: Use windowed or summary memory
-
-from langchain.memory import ConversationSummaryBufferMemory
-
-memory = ConversationSummaryBufferMemory(
-    llm=llm,
-    memory_key="chat_history", 
-    max_token_limit=1000,  # Summarize when context gets too long
-    return_messages=True
-)
+# Enhanced agent with better tool selection
+class SmartAgent:
+    def _should_use_calculator(self, query):
+        math_keywords = ["calculate", "compute", "solve", "math", "+", "-", "*", "/", "="]
+        return any(keyword in query.lower() for keyword in math_keywords)
 ```
 
 ### **4. API Rate Limits**
