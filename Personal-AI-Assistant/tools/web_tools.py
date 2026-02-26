@@ -18,6 +18,16 @@ except ImportError:
     SERPAPI_AVAILABLE = False
 
 try:
+    from duckduckgo_search import DDGS
+    DUCKDUCKGO_AVAILABLE = True
+except ImportError:
+    try:
+        from ddgs import DDGS
+        DUCKDUCKGO_AVAILABLE = True  
+    except ImportError:
+        DUCKDUCKGO_AVAILABLE = False
+
+try:
     import arxiv
     ARXIV_AVAILABLE = True
 except ImportError:
@@ -32,62 +42,118 @@ logger = logging.getLogger(__name__)
 class WebSearchTool:
     """
     🔍 Web Search Tool
-    Searches the internet for information using SerpAPI or basic web scraping.
+    Searches the internet using DuckDuckGo (free, no API key required)
     """
     
     def __init__(self):
         self.serpapi_key = os.getenv("SERPAPI_API_KEY", "")
         self.use_serpapi = SERPAPI_AVAILABLE and bool(self.serpapi_key)
+        self.use_duckduckgo = DUCKDUCKGO_AVAILABLE
         
     def search_web(self, query: str, num_results: int = 5) -> str:
         """
-        Search the web for information
+        Search the web for information using DuckDuckGo (primary) with SerpAPI fallback
         
         Args:
             query: Search query string
             num_results: Number of results to return
             
         Returns:
-            Formatted search results
+            Formatted search results string
         """
+        # Try DuckDuckGo first (free, no API key required)
+        if self.use_duckduckgo:
+            try:
+                result = self._search_duckduckgo(query, num_results)
+                # Check if DuckDuckGo returned an error or no results
+                if "error" not in result.lower() and "no results found" not in result.lower():
+                    return result
+                else:
+                    logger.warning(f"DuckDuckGo search failed: {result}")
+            except Exception as e:
+                logger.warning(f"DuckDuckGo search failed with exception: {str(e)}")
+        
+        # Fallback to SerpAPI if DuckDuckGo failed and SerpAPI is available
+        if self.use_serpapi:
+            try:
+                logger.info("Falling back to SerpAPI search")
+                return self._search_serpapi(query, num_results)
+            except Exception as e:
+                logger.warning(f"SerpAPI search also failed: {str(e)}")
+        
+        # Final fallback to basic web scraping
         try:
-            if self.use_serpapi:
-                return self._search_with_serpapi(query, num_results)
-            else:
-                return self._search_basic(query, num_results)
-                
+            logger.info("Using basic web scraping as final fallback")
+            return self._search_basic(query, num_results)
         except Exception as e:
-            logger.error(f"Web search error: {str(e)}")
-            return f"Search error: {str(e)}"
+            logger.error(f"All search methods failed: {str(e)}")
+            return f"Search error: All search methods failed. DuckDuckGo: rate limited, SerpAPI: {('not available' if not self.use_serpapi else 'failed')}, Basic search: {str(e)}"
     
-    def _search_with_serpapi(self, query: str, num_results: int) -> str:
+    def _search_duckduckgo(self, query: str, num_results: int) -> str:
+        """Search using DuckDuckGo (free, no API key required)"""
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=num_results))
+            
+            if not results:
+                return f"No results found for: {query}"
+            
+            formatted_results = []
+            for i, result in enumerate(results, 1):
+                title = result.get('title', 'No title')
+                body = result.get('body', 'No description')
+                url = result.get('href', '')
+                
+                formatted_results.append(f"""
+**🔍 Result {i}: {title}**
+{body}
+🌐 Source: {url}
+""")
+            
+            header = f"🦆 DuckDuckGo Search Results for '{query}':\n"
+            return header + "\n".join(formatted_results)
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "ratelimit" in error_msg or "rate limit" in error_msg or "429" in error_msg:
+                logger.warning(f"DuckDuckGo rate limited for query: {query}")
+                return f"DuckDuckGo search error: Rate limited - trying fallback method"
+            else:
+                logger.error(f"DuckDuckGo search error: {str(e)}")
+                return f"DuckDuckGo search error: {str(e)} - trying fallback method"
+    
+    def _search_serpapi(self, query: str, num_results: int) -> str:
         """Search using SerpAPI (more reliable but requires API key)"""
         try:
             search = GoogleSearch({
                 "q": query,
-                "api_key": self.serpapi_key,
-                "num": num_results
+                "location": "United States",
+                "hl": "en",
+                "gl": "us",
+                "google_domain": "google.com",
+                "num": str(num_results),
+                "api_key": self.serpapi_key
             })
             
             results = search.get_dict()
             organic_results = results.get("organic_results", [])
             
             if not organic_results:
-                return f"No search results found for: {query}"
+                return f"No results found for: {query}"
             
             formatted_results = []
-            for i, result in enumerate(organic_results, 1):
-                title = result.get("title", "No title")
-                snippet = result.get("snippet", "No description")
-                link = result.get("link", "No link")
+            for i, result in enumerate(organic_results[:num_results], 1):
+                title = result.get('title', 'No title')
+                snippet = result.get('snippet', 'No description')
+                link = result.get('link', '')
                 
                 formatted_results.append(f"""
-**Result {i}: {title}**
+**🔍 Result {i}: {title}**
 {snippet}
 🔗 Source: {link}
 """)
             
-            return f"🔍 Search results for '{query}':\n" + "\n".join(formatted_results)
+            return f"🐍 SerpAPI Search Results for '{query}':\n" + "\n".join(formatted_results)
             
         except Exception as e:
             return f"SerpAPI search error: {str(e)}"

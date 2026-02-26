@@ -158,6 +158,37 @@ class FileAnalysisTool:
         except Exception as e:
             return f"❌ Error analyzing text file: {str(e)}"
     
+    def analyze_csv_data(self, csv_content: str, data_name: str = "Provided Data") -> str:
+        """
+        Analyze CSV data from text content directly
+        
+        Args:
+            csv_content: CSV data as string
+            data_name: Name to display for the data
+            
+        Returns:
+            Analysis results
+        """
+        try:
+            # Parse CSV from string
+            from io import StringIO
+            csv_buffer = StringIO(csv_content)
+            self.current_data = pd.read_csv(csv_buffer)
+            
+            # Set file info for the analysis
+            self.file_info = {
+                'path': data_name,
+                'format': 'CSV (from text)',
+                'size': len(csv_content.encode('utf-8')),
+                'modified': datetime.now()
+            }
+            
+            return self._generate_data_analysis()
+            
+        except Exception as e:
+            logger.error(f"CSV analysis error: {e}")
+            return f"❌ Error analyzing CSV data: {str(e)}"
+    
     def get_column_analysis(self, column_name: str) -> str:
         """Get detailed analysis of a specific column"""
         try:
