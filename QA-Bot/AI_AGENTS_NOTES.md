@@ -249,13 +249,37 @@ python-dotenv>=1.0.0
 
 import os
 from dotenv import load_dotenv
-from langchain.agents import initialize_agent, AgentType
 from langchain.tools import Tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.utilities import SerpAPIWrapper
 
 # Load environment variables
 load_dotenv()
+
+class SimpleSearchAgent:
+    """Simple search agent implementation"""
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = {tool.name: tool for tool in tools}
+    
+    def invoke(self, inputs):
+        query = inputs["input"] 
+        search_keywords = ["current", "latest", "today", "now", "recent", "stock price", "weather", "news"]
+        needs_search = any(word in query.lower() for word in search_keywords)
+        
+        if needs_search and "Search" in self.tools:
+            try:
+                print(f"🔍 Searching for: {query}")
+                search_result = self.tools["Search"].func(query)
+                return {"output": f"Based on my search: {search_result}"}
+            except Exception as e:
+                return {"output": f"Search failed: {str(e)}"}
+        else:
+            try:
+                response = self.llm.invoke(query)
+                return {"output": response.content if hasattr(response, 'content') else str(response)}
+            except Exception as e:
+                return {"output": f"LLM failed: {str(e)}"}
 
 def create_search_agent():
     """Create an agent that can search the web"""
@@ -279,16 +303,7 @@ def create_search_agent():
         )
     ]
     
-    # Create agent
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True,  # Shows thinking process
-        return_intermediate_steps=True
-    )
-    
-    return agent
+    return SimpleSearchAgent(llm, tools)
 
 # Usage Example
 if __name__ == "__main__":
@@ -318,8 +333,40 @@ if __name__ == "__main__":
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from langchain.agents import Tool, initialize_agent, AgentType
+from langchain.tools import Tool
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+class SimpleDataAgent:
+    """Simple data analysis agent implementation"""
+    def __init__(self, llm, tools):
+        self.llm = llm
+        self.tools = {tool.name: tool for tool in tools}
+    
+    def invoke(self, inputs):
+        query = inputs["input"].lower()
+        
+        if "load" in query and "csv" in query:
+            return self._use_tool("LoadData", query)
+        elif "analyze" in query or "correlation" in query:
+            return self._use_tool("AnalyzeData", query)
+        elif "chart" in query or "visualization" in query:
+            return self._use_tool("CreateChart", query)
+        else:
+            try:
+                response = self.llm.invoke(inputs["input"])
+                return {"output": response.content if hasattr(response, 'content') else str(response)}
+            except Exception as e:
+                return {"output": f"LLM failed: {str(e)}"}
+    
+    def _use_tool(self, tool_name, query):
+        if tool_name in self.tools:
+            try:
+                result = self.tools[tool_name].func(query)
+                return {"output": result}
+            except Exception as e:
+                return {"output": f"Tool {tool_name} failed: {str(e)}"}
+        else:
+            return {"output": f"Tool {tool_name} not available"}
 
 def create_data_analysis_tools():
     """Create tools for data analysis"""
@@ -383,14 +430,7 @@ def create_data_agent():
     
     tools = create_data_analysis_tools()
     
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True
-    )
-    
-    return agent
+    return SimpleDataAgent(llm, tools)
 
 # Usage Example
 if __name__ == "__main__":
