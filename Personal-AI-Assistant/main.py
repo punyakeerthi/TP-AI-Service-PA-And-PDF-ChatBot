@@ -18,6 +18,10 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 import pandas as pd
 
 # Add the project root to Python path
@@ -210,19 +214,72 @@ def display_sidebar():
         
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # Demo Guide
+        st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+        st.markdown("## 🎯 Demo Guide")
+        
+        with st.expander("💡 Try These Questions", expanded=False):
+            st.markdown("""
+**📋 Task Manager:**
+- "Help me organize my daily tasks"
+- "Set a reminder for tomorrow"
+- "Create a project timeline"
+
+**🔍 Research Agent:**
+- "Research the latest AI trends"
+- "Find info about renewable energy"
+- "Search for market data"
+
+**💼 Business Agent:**
+- "Send an email to my team" 
+- "Draft a meeting agenda"
+- "Create a professional email"
+
+**📊 Data Agent:**
+- "Analyze this sales data"
+- "Create a data visualization"
+- "Generate insights from data"
+
+**🎛️ Coordinator:**
+- "Start a collaboration between agents"
+- "Show me available agents"
+- "Plan a multi-agent workflow"
+            """)
+            
+        with st.expander("📊 Sample Data", expanded=False):
+            st.markdown("""
+**Sales Data (copy & paste):**
+```
+Order_ID,Date,Customer,Amount
+1001,2026-01-15,Acme Corp,15000
+1002,2026-01-16,Tech Solutions,8500
+1003,2026-01-17,Global Industries,3200
+```
+
+**Task Data:**
+```
+Task,Priority,Due_Date,Status
+Budget Review,High,2026-03-01,Pending
+Team Meeting,Medium,2026-02-28,In Progress
+Client Call,High,2026-02-27,Not Started
+```
+            """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
         # Settings
         st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
         st.markdown("## ⚙️ Settings")
         
         if st.button("🗑️ Clear Chat"):
             st.session_state.chat_history = []
-            st.experimental_rerun()
+            st.rerun()
         
         if st.button("🔄 Reset System"):
             st.session_state.coordinator = None
             st.session_state.system_initialized = False
             st.session_state.chat_history = []
-            st.experimental_rerun()
+            st.rerun()
         
         # Export chat
         if st.button("💾 Export Chat"):
@@ -336,7 +393,7 @@ def display_input_area():
         if user_input:
             add_message("user", user_input)
             process_user_request(user_input)
-            st.experimental_rerun()
+            st.rerun()
     
     elif input_method == "📝 Detailed Request":
         with st.form("detailed_request_form"):
@@ -358,51 +415,98 @@ def display_input_area():
                 
                 add_message("user", full_request)
                 process_user_request(full_request)
-                st.experimental_rerun()
+                st.rerun()
     
     elif input_method == "🎯 Quick Commands":
-        st.markdown("**Quick Command Templates:**")
+        st.markdown("**💡 Try These Demo Questions:**")
         
+        # Agent-specific demo questions
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("📋 Create Task"):
-                command = "Create a new task for me"
+            st.markdown("**📋 Task Manager:**")
+            if st.button("Help me organize my daily tasks", key="task1"):
+                command = "Help me organize my daily tasks"
                 add_message("user", command)
                 process_user_request(command)
-                st.experimental_rerun()
+                st.rerun()
             
-            if st.button("📊 System Status"):
-                command = "Show me the complete system status"
+            if st.button("Set a reminder for tomorrow", key="task2"):
+                command = "Set a reminder to call the client tomorrow"
                 add_message("user", command)
                 process_user_request(command)
-                st.experimental_rerun()
+                st.rerun()
+                
+            st.markdown("**💼 Business Agent:**")
+            if st.button("Send an email to my team", key="business1"):
+                command = "Send an email to my team"
+                add_message("user", command)
+                process_user_request(command)
+                st.rerun()
         
         with col2:
-            if st.button("🔍 Quick Research"):
-                command = "Help me research a topic"
+            st.markdown("**🔍 Research Agent:**")
+            if st.button("Research the latest AI trends", key="research1"):
+                command = "Research the latest AI trends"
                 add_message("user", command)
                 process_user_request(command)
-                st.experimental_rerun()
+                st.rerun()
             
-            if st.button("💼 Check Emails"):
-                command = "Check my email inbox"
+            if st.button("Find info about renewable energy", key="research2"):
+                command = "Find information about renewable energy technologies"
                 add_message("user", command)
                 process_user_request(command)
-                st.experimental_rerun()
+                st.rerun()
+                
+            st.markdown("**📊 Data Analysis:**")
+            if st.button("Analyze sample sales data", key="data1"):
+                sample_data = """Analyze this sales data
+Order_ID,Date,Customer,Product,Amount
+1001,2026-01-15,Acme Corp,Software License,15000
+1002,2026-01-16,Tech Solutions,Consulting,8500
+1003,2026-01-17,Global Industries,Support,3200"""
+                add_message("user", sample_data)
+                process_user_request(sample_data)
+                st.rerun()
         
         with col3:
-            if st.button("🤝 Start Collaboration"):
-                command = "Start a new multi-agent collaboration"
+            st.markdown("**🎛️ Coordinator:**")
+            if st.button("Start a collaboration between agents", key="coord1"):
+                command = "Start a collaboration between agents"
                 add_message("user", command)
                 process_user_request(command)
-                st.experimental_rerun()
+                st.rerun()
             
-            if st.button("📈 Productivity Stats"):
-                command = "Show my productivity statistics"
+            if st.button("Show me available agents", key="coord2"):
+                command = "Show me available agents"
                 add_message("user", command)
                 process_user_request(command)
-                st.experimental_rerun()
+                st.rerun()
+                
+            if st.button("Plan a multi-agent workflow", key="coord3"):
+                command = "Plan a multi-agent workflow for market research"
+                add_message("user", command)
+                process_user_request(command)
+                st.rerun()
+        
+        # Additional helpful examples
+        st.markdown("---")
+        st.markdown("**🎯 More Examples:**")
+        example_col1, example_col2 = st.columns(2)
+        
+        with example_col1:
+            if st.button("📈 Business Intelligence Demo", key="demo1"):
+                command = "Coordinate a comprehensive market analysis using research and data agents"
+                add_message("user", command)
+                process_user_request(command)
+                st.rerun()
+        
+        with example_col2:
+            if st.button("📋 Project Planning Demo", key="demo2"):
+                command = "Create a project timeline and coordinate tasks across multiple agents"
+                add_message("user", command)
+                process_user_request(command)
+                st.rerun()
 
 def export_chat_history():
     """Export chat history as JSON"""
